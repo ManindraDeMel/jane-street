@@ -36,7 +36,7 @@ def main():
     print("First message from exchange:", hello_message)
 
     order_id = 1
-    price_offset = 1
+    price_offset = 5
     fair_value = 1000
 
     while True:
@@ -49,16 +49,14 @@ def main():
             best_bid = max(message["buy"], key=lambda x: x[0], default=[0, 0])[0] if message["buy"] else 0
             best_ask = min(message["sell"], key=lambda x: x[0], default=[float('inf'), 0])[0] if message["sell"] else float('inf')
 
-            # Adjusting strategy to buy BOND for less than $1000 and sell for more than $1000
+            # Adjust buy and sell prices based on the larger price_offset
             if best_bid > 0 and best_bid + price_offset < fair_value:
-                # Place a buy order just above the best bid but still below $1000
-                buy_price = min(best_bid + price_offset, fair_value - 1)
+                buy_price = min(best_bid + price_offset, fair_value - price_offset)  # Adjust buy price to be more competitive
                 exchange.send_add_message(order_id, "BOND", Dir.BUY, buy_price, 1)
                 order_id += 1
 
             if best_ask < float('inf') and best_ask - price_offset > fair_value:
-                # Place a sell order just below the best ask but still above $1000
-                sell_price = max(best_ask - price_offset, fair_value + 1)
+                sell_price = max(best_ask - price_offset, fair_value + price_offset)  # Adjust sell price to be more competitive
                 exchange.send_add_message(order_id, "BOND", Dir.SELL, sell_price, 1)
                 order_id += 1
 
