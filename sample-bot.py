@@ -32,74 +32,37 @@ def main():
 
     exchange = ExchangeConnection(args=args)
 
-    # Store and print the "hello" message received from the exchange. This
-    # contains useful information about your positions. Normally you start with
-    # all positions at zero, but if you reconnect during a round, you might
-    # have already bought/sold symbols and have non-zero positions.
     hello_message = exchange.read_message()
     print("First message from exchange:", hello_message)
 
-    # Send an order for BOND at a good price, but it is low enough that it is
-    # unlikely it will be traded against. Maybe there is a better price to
-    # pick? Also, you will need to send more orders over time.
-    exchange.send_add_message(order_id=1, symbol="BOND", dir=Dir.BUY, price=990, size=1)
+    # Initialize order ID
+    order_id = 1
 
-    # Set up some variables to track the bid and ask price of a symbol. Right
-    # now this doesn't track much information, but it's enough to get a sense
-    # of the VALE market.
-    vale_bid_price, vale_ask_price = None, None
-    vale_last_print_time = time.time()
+    # Initialize price offset for pennying strategy
+    price_offset = 1
 
-    # Here is the main loop of the program. It will continue to read and
-    # process messages in a loop until a "close" message is received. You
-    # should write to code handle more types of messages (and not just print
-    # the message). Feel free to modify any of the starter code below.
-    #
-    # Note: a common mistake people make is to call write_message() at least
-    # once for every read_message() response.
-    #
-    # Every message sent to the exchange generates at least one response
-    # message. Sending a message in response to every exchange message will
-    # cause a feedback loop where your bot's messages will quickly be
-    # rate-limited and ignored. Please, don't do that!
     while True:
         message = exchange.read_message()
 
-        # Some of the message types below happen infrequently and contain
-        # important information to help you understand what your bot is doing,
-        # so they are printed in full. We recommend not always printing every
-        # message because it can be a lot of information to read. Instead, let
-        # your code handle the messages and just print the information
-        # important for you!
         if message["type"] == "close":
             print("The round has ended")
             break
-        elif message["type"] == "error":
+        elif message["type"] == "book" and message["symbol"] == "BOND":
+            # Check if there are bids and offers in the book
+            best_bid = max(message["buy"], key=lambda x: x[0], default=[0, 0])[0] if message["buy"] else 0
+            best_ask = min(message["sell"], key=lambda x: x[0], default=[float('inf'), 0])[0] if message["sell"] else float('inf')
+
+            # Pennying strategy: place a buy order just above the best bid and a sell order just below the best ask
+            if best_bid > 0:
+                exchange.send_add_message(order_id, "BOND", Dir.BUY, best_bid + price_offset, 1)
+                order_id += 1
+
+            if best_ask < float('inf'):
+                exchange.send_add_message(order_id, "BOND", Dir.SELL, best_ask - price_offset, 1)
+                order_id += 1
+
+        elif message["type"] in ["error", "reject", "fill"]:
             print(message)
-        elif message["type"] == "reject":
-            print(message)
-        elif message["type"] == "fill":
-            print(message)
-        elif message["type"] == "book":
-            if message["symbol"] == "VALE":
-
-                def best_price(side):
-                    if message[side]:
-                        return message[side][0][0]
-
-                vale_bid_price = best_price("buy")
-                vale_ask_price = best_price("sell")
-
-                now = time.time()
-
-                if now > vale_last_print_time + 1:
-                    vale_last_print_time = now
-                    print(
-                        {
-                            "vale_bid_price": vale_bid_price,
-                            "vale_ask_price": vale_ask_price,
-                        }
-                    )
 
 
 # ~~~~~============== PROVIDED CODE ==============~~~~~
