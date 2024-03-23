@@ -10,6 +10,8 @@ from enum import Enum
 import time
 import socket
 import json
+import csv
+from datetime import datetime
 
 # ~~~~~============== CONFIGURATION  ==============~~~~~
 # Replace "REPLACEME" with your team name!
@@ -26,6 +28,11 @@ team_name = "UltraTraders"
 # code is intended to be a working example, but it needs some improvement
 # before it will start making good trades!
 
+
+def append_to_csv(filename, best_bid, best_ask):
+    with open(filename, 'a', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow([datetime.now(), best_bid, best_ask])
 
 def main():
     args = parse_arguments()
@@ -49,6 +56,8 @@ def main():
             best_bid = max(message["buy"], key=lambda x: x[0], default=[0, 0])[0] if message["buy"] else 0
             best_ask = min(message["sell"], key=lambda x: x[0], default=[float('inf'), 0])[0] if message["sell"] else float('inf')
 
+            append_to_csv('best_bid_ask.csv', best_bid, best_ask)
+
             # Adjust buy and sell prices based on the larger price_offset
             if best_bid > 0 and best_bid + price_offset < fair_value:
                 buy_price = min(best_bid + price_offset, fair_value - price_offset)  # Adjust buy price to be more competitive
@@ -62,6 +71,7 @@ def main():
 
         elif message["type"] in ["error", "reject", "fill"]:
             print(message)
+        
 
 
 # ~~~~~============== PROVIDED CODE ==============~~~~~
