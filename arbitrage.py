@@ -10,8 +10,6 @@ from enum import Enum
 import time
 import socket
 import json
-import csv
-from datetime import datetime
 
 # ~~~~~============== CONFIGURATION  ==============~~~~~
 # Replace "REPLACEME" with your team name!
@@ -28,11 +26,43 @@ team_name = "UltraTraders"
 # code is intended to be a working example, but it needs some improvement
 # before it will start making good trades!
 
+def update_best_bid_ask(symbol, message):
+    global best_bid_prices, best_ask_prices
+    # Check if there are any buy orders and update the best bid price
+    if message["buy"]:
+        best_bid_prices[symbol] = max(message["buy"], key=lambda x: x[0])[0]
+    else:
+        # If there are no buy orders, we can't make a bid; you might choose to set this to 0 or keep the last known bid
+        best_bid_prices[symbol] = 0  # or maintain the last known bid if appropriate
 
-def append_to_csv(filename, best_bid, best_ask):
-    with open(filename, 'a', newline='') as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow([datetime.now(), best_bid, best_ask])
+    # Check if there are any sell orders and update the best ask price
+    if message["sell"]:
+        best_ask_prices[symbol] = min(message["sell"], key=lambda x: x[0])[0]
+    else:
+        # If there are no sell orders, we can't make an ask; you might choose to set this to infinity or keep the last known ask
+        best_ask_prices[symbol] = float('inf')  # or maintain the last known ask if appropriate
+
+
+def execute_trade_strategy(exchange, order_id):
+    # Calculate the aggregate value of components
+    component_value = 3 * best_bid_prices['BOND'] + 2 * best_bid_prices['GS'] + 3 * best_bid_prices['MS'] + 2 * best_bid_prices['WFC']
+    # Check if XLF's price is less than the calculated component value minus one
+    if best_ask_prices['XLF'] < component_value - 1:
+        # Buy 10 XLF
+        exchange.send_add_message(order_id, "XLF", Dir.BUY, best_ask_prices['XLF'], 10)
+        # Wait for confirmation of XLF purchase before converting
+        # This part is simplified; in practice, you should check for a fill message
+        
+        # Assuming you have received confirmation (this is a simplification)
+        # Convert 10 XLF to components
+        exchange.send_convert_message(order_id, "XLF", Dir.SELL, 10)
+        # Wait for confirmation of conversion
+        
+        # Sell components (simplified)
+        # In practice, you would check current market prices and send sell orders for each component
+        exchange.send_add_message(order_id, "BOND", Dir.SELL, best_bid_prices['BOND'], 30)  # Selling 3*10 components
+        # Repeat for GS, MS, WFC
+
 
 def main():
     args = parse_arguments()
@@ -41,38 +71,10 @@ def main():
 
     hello_message = exchange.read_message()
     print("First message from exchange:", hello_message)
-
     order_id = 1
-    price_offset = 5
-    fair_value = 1000
-
     while True:
-        message = exchange.read_message()
-
-        if message["type"] == "close":
-            print("The round has ended")
-            break
-        elif message["type"] == "book" and message["symbol"] == "BOND":
-            best_bid = max(message["buy"], key=lambda x: x[0], default=[0, 0])[0] if message["buy"] else 0
-            best_ask = min(message["sell"], key=lambda x: x[0], default=[float('inf'), 0])[0] if message["sell"] else float('inf')
-
-            append_to_csv('best_bid_ask.csv', best_bid, best_ask)
-
-            # Adjust buy and sell prices based on the larger price_offset
-            if best_bid > 0 and best_bid + price_offset < fair_value:
-                buy_price = min(best_bid + price_offset, fair_value - price_offset)  # Adjust buy price to be more competitive
-                exchange.send_add_message(order_id, "BOND", Dir.BUY, buy_price, 1)
-                order_id += 1
-
-            if best_ask < float('inf') and best_ask - price_offset > fair_value:
-                sell_price = max(best_ask - price_offset, fair_value + price_offset)  # Adjust sell price to be more competitive
-                exchange.send_add_message(order_id, "BOND", Dir.SELL, sell_price, 1)
-                order_id += 1
-
-        elif message["type"] in ["error", "reject", "fill"]:
-            print(message)
-        
-
+        execute_trade_strategy(exchange, order_id)
+        order_id += 1
 
 # ~~~~~============== PROVIDED CODE ==============~~~~~
 
