@@ -29,6 +29,8 @@ team_name = "UltraTraders"
 best_bid_prices = {}
 best_ask_prices = {}
 
+positions = {"VALE" : 0, "VALBZ" : 0}
+
 def update_best_bid_ask(symbol, message):
     global best_bid_prices, best_ask_prices
     # Check if there are any buy orders and update the best bid price
@@ -46,6 +48,17 @@ def update_best_bid_ask(symbol, message):
         best_ask_prices[symbol] = float('inf')  # or maintain the last known ask if appropriate
 
 
+def handle_fill_message(message):
+    global positions
+    symbol = message['symbol']
+    quantity = int(message['size'])  # Ensure quantity is an integer
+    direction = message['dir']  # 'BUY' or 'SELL'
+    
+    if direction == 'BUY':
+        positions[symbol] += quantity
+    elif direction == 'SELL':
+        positions[symbol] -= quantity
+
 def main():
     args = parse_arguments()
 
@@ -58,12 +71,19 @@ def main():
     
     while True:
         message = exchange.read_message()
-        update_best_bid_ask(message['symbol'], message)
-        exchange.send_add_message(order_id, "VALE", Dir.BUY, best_bid_prices['VALE'], 1)
-        order_id += 1
-        exchange.send_convert_message(order_id, "VALBZ", Dir.BUY, 1)
-        order_id += 1
-        exchange.send_sell_message(order_id, "VALBZ", Dir.SELL, best_ask_prices['VALBZ'], 1)
+        if message['type'] == 'book' and message['symbol'] in ['VALE', 'VALBZ']:
+            update_best_bid_ask(message['symbol'], message)
+
+        if message['type'] == 'fill':
+            handle_fill_message(message)
+
+        if ('VALE' in best_bid_prices.keys() and 'VALBZ' in best_ask_prices.keys()):
+            exchange.send_add_message(order_id, "VALE", Dir.BUY, best_bid_prices['VALE'], 1)
+            order_id += 1
+            exchange.send_convert_message(order_id, "VALBZ", Dir.BUY, 1)
+            order_id += 1
+            exchange.send_add_message(order_id, "VALBZ", Dir.SELL, best_ask_prices['VALBZ'], 1)
+        time.sleep(0.1)
 
 
 # ~~~~~============== PROVIDED CODE ==============~~~~~

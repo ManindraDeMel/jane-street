@@ -174,7 +174,9 @@ def main():
         elif message["type"] in ["error", "reject", "fill"]:
             print(message)
             time.sleep(0.1)
-            # handle_fill_message(message)
+        elif message["type"] in ["fill"]:
+            handle_fill_message(message)
+
         elif message['type'] == "reject" and message['error'] == "LIMIT:POSITION":
             print("LIMIT POSITION REACHED")
             # Determine the appropriate symbols and quantity based on your strategy and current positions
