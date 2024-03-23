@@ -50,7 +50,7 @@ def handle_fill_message(message):
 def limit_position_convert(exchange, order_id, from_symbol, quantity):
     """Convert positions when limits are reached."""
     print(f"Converting {quantity} from {from_symbol}")
-    exchange.send_convert_message(order_id, from_symbol, Dir.BUY quantity)
+    exchange.send_convert_message(order_id, from_symbol, Dir.BUY, quantity)
     order_id += 1
     time.sleep(1)  # Rate limiting
     return order_id
@@ -84,13 +84,13 @@ def execute_conversion_strategy(exchange, order_id):
     # Check if ask price for VALE is less than the best bid price for VALBZ
     if best_ask_prices.get('VALE', float('inf')) < best_bid_prices.get('VALBZ', 0):
         # Buy 20 VALE
-        if (positions['VALE'] != 9) and (positions['VALBZ'] != -9):
+        if (positions['VALE'] >= 9) and (positions['VALBZ'] <= -9):
             exchange.send_add_message(order_id, "VALE", Dir.BUY, best_ask_prices['VALE'], 1)
             order_id += 1
             message_sent = True  # Set flag to True after sending a message
             time.sleep(0.1)
         # Sell 20 VALBZ
-        if (positions['VALE'] != 9) and (positions['VALBZ'] != -9):
+        if (positions['VALE'] >= 9) and (positions['VALBZ'] <= -9):
             exchange.send_add_message(order_id, "VALBZ", Dir.SELL, best_bid_prices['VALBZ'], 1)
             order_id += 1
             message_sent = True
