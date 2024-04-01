@@ -6,7 +6,7 @@ Participated in the Jane Street Electronic Trading Challenge, our team embarked 
 ## Strategies Explored
 
 ### 1. Bonds Trading
-Our initial foray into the competition focused on bonds trading. By analyzing the market data and applying our quantitative models, we successfully implemented a bonds trading strategy that contributed significantly to our early gains in the competition.
+Our initial foray into the competition focused on bonds trading. By analyzing the market data and applying our quantitative models, we successfully implemented a bonds trading strategy that contributed significantly to our early gains in the competition. We were one of the first teams to deploy this strategy and as a result we were in 2nd place for the first two hours (I would recommend starting with this strategy in the future)
 
 ### 2. Arbitrage: VAL and VALZ
 One of our primary strategies involved exploiting arbitrage opportunities between VAL and VALZ. However, we encountered challenges with the convert method's inconsistency and our inability to accurately track our positions. Despite our best efforts, these issues prevented us from fully capitalizing on this strategy.
